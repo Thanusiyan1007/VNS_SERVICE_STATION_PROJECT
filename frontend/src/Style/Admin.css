@@ -1,0 +1,17 @@
+/* Admin.css */
+
+.text-white {
+    color: white; /* Ensure text color is white */
+}
+
+.bg-maincolor {
+    background-color: #2b7c85; /* Replace with your main color */
+}
+
+.icon-white {
+    color: white; /* Ensure icon color is white */
+}
+
+.full-height {
+    height: 100%; /* Ensure element takes full height */
+}

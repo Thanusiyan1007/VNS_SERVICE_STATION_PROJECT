@@ -1,0 +1,58 @@
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50; /* Ensure it's above other content */
+    background-color: #ffffff; /* Background color for navbar */
+    border-bottom: 1px solid #dddddd; /* Optional: Add a bottom border */
+    transition: background-color 0.3s ease; /* Smooth transition for background color */
+}
+
+.navbar.scroll {
+    background-color: #ffffff; /* Change background color on scroll if needed */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Optional: Add shadow on scroll */
+}
+
+.navbar .nav-items {
+    display: flex;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.navbar .nav-items li {
+    margin-right: 20px;
+}
+
+.navbar .nav-items li a {
+    color: #333333;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.navbar .nav-items li a:hover {
+    color: #007bff; /* Hover color */
+}
+
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+    .navbar .nav-items {
+        display: none; /* Hide nav items on small screens */
+    }
+
+    .navbar.mobile-open .nav-items {
+        display: flex; /* Show nav items when menu is open */
+        flex-direction: column;
+        align-items: center;
+        position: absolute;
+        top: 60px; /* Adjust as needed based on your navbar height */
+        left: 0;
+        right: 0;
+        background-color: #ffffff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        z-index: 100; /* Ensure it's above other content */
+    }
+}
