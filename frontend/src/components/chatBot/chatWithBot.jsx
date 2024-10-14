@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { jsPDF } from 'jspdf'; // Import jsPDF for PDF generation
 import logo from '../../Assets/Chat bot-pana (1).svg'; // Ensure logo path is correct
 
 function CameraSearch() {
@@ -6,11 +7,16 @@ function CameraSearch() {
     const [messages, setMessages] = useState([]); // State to store messages in chat
     const [isChatOpen, setIsChatOpen] = useState(false); // State to track chat window visibility
     const [isTTSEnabled, setIsTTSEnabled] = useState(false); // State to toggle TTS
+    const [isModalOpen, setIsModalOpen] = useState(false); // State to manage profile picture modal visibility
+    const [profilePic, setProfilePic] = useState("https://via.placeholder.com/40"); // State to track user profile picture
+    const [newProfilePic, setNewProfilePic] = useState(null); // State to track the newly selected profile picture
     const chatContainerRef = useRef(null); // Ref to manage scroll
+    const [selectedPackage, setSelectedPackage] = useState(null); // Track the selected package for PDF generation
 
     // CCTV service packages and camera data
     const data = {
         basicPackage: {
+            name: "Basic Package",
             cameras: "2 - 4 basic HD/Full Color Cameras",
             installation: "Basic cabling, connectors, and configuration",
             storage: "500GB – 1TB hard drive",
@@ -19,10 +25,10 @@ function CameraSearch() {
                 { brand: "Hikvision", model: "3K Full Time Color Audio 4 Camera", price: "110,100 LKR" },
                 { brand: "TVT", model: "2MP IP POE 4 Camera", price: "59,290 LKR" },
                 { brand: "CP Plus", model: "2MP Full HD Bullet Camera", price: "45,000 LKR" },
-                { brand: "Uniview", model: "2MP IP Camera", price: "50,000 LKR" }
             ]
         },
         intermediatePackage: {
+            name: "Intermediate Package",
             cameras: "4 - 8 HD/Full Color/Night Vision Cameras",
             installation: "Improved cabling, conduits, connectors, and configuration",
             storage: "1TB – 2TB hard drive",
@@ -31,11 +37,10 @@ function CameraSearch() {
                 { brand: "Hikvision", model: "3K HD Color Night Vision 7 Camera", price: "187,000 LKR" },
                 { brand: "Dahua", model: "4MP Starlight IP Camera", price: "125,000 LKR" },
                 { brand: "Uniview", model: "4MP IP Camera", price: "70,000 LKR" },
-                { brand: "CP Plus", model: "4MP Full HD Dome Camera", price: "65,000 LKR" },
-                { brand: "Bosch", model: "4MP Starlight IP Camera", price: "150,000 LKR" }
             ]
         },
         advancedPackage: {
+            name: "Advanced Package",
             cameras: "8 - 16 Full HD/4K Cameras with advanced features like motion detection, human/vehicle alerts",
             installation: "Complete wiring, conduits, and high-quality connectors",
             storage: "4TB+ hard drive",
@@ -44,9 +49,6 @@ function CameraSearch() {
                 { brand: "Hikvision", model: "3K ColorVU 8 Security Camera", price: "205,800 LKR" },
                 { brand: "Dahua", model: "8MP 4K IP Camera", price: "150,000 LKR" },
                 { brand: "Samsung", model: "8MP 4K IP Camera", price: "230,000 LKR" },
-                { brand: "Bosch", model: "8MP 4K Starlight IP Camera", price: "200,000 LKR" },
-                { brand: "Sony", model: "8MP 4K IP Camera", price: "235,000 LKR" },
-                { brand: "Vivotek", model: "8MP 4K IP Camera", price: "240,000 LKR" }
             ]
         }
     };
@@ -54,57 +56,54 @@ function CameraSearch() {
     const formatMessageText = (text) => {
         let formattedText = text.replace(/#/g, '');
 
-    // Regex to find bold text (**text**) and replace with <b>text</b>
         const boldTextRegex = /\*\*(.*?)\*\*/g;
         formattedText = formattedText.replace(boldTextRegex, (match, boldText) => {
             return `<b>${boldText}</b>`;
         });
-        // Regex to find links, words in square brackets, and email addresses
         const regex = /(\[([^\]]+)\])?\s*(https?:\/\/[^\s]+|www\.[^\s]+|[^\s]+\.[^\s]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
 
         return formattedText.split('\n').map((line, index) => {
             return line.replace(regex, (match, p1, p2, p3) => {
                 let finalLink;
 
-                // Determine if p3 is an email or a link
                 if (p3.includes('@')) {
-                    // If it's an email, create a mailto link
                     finalLink = `mailto:${p3.trim()}`;
-                    // Use the email directly as clickable text
                     return `<a href="${finalLink}" style="color: #A9E4EF; text-decoration: underline;" target="_blank" rel="noopener noreferrer">${p3.trim()}</a>`;
                 } else {
-                    // Clean the link by removing any leading/trailing brackets or symbols
                     const cleanLink = p3.replace(/^[^\w]+|[^\w]+$/g, '');
-
-                    // Check if the link starts with http or www; if not, prepend http
                     finalLink = cleanLink.startsWith('http') || cleanLink.startsWith('www') ? cleanLink : `http://${cleanLink}`;
 
                     if (p1) {
-                        // If there's a word in brackets, create a hyperlink using that word
                         return `<a href="${finalLink}" style="color: #A9E4EF; text-decoration: underline;" target="_blank" rel="noopener noreferrer">${p2}</a>`;
                     }
-                    // If there's no word in brackets, just return the clickable link
                     return `<a href="${finalLink}" style="color: #A9E4EF; text-decoration: underline;" target="_blank" rel="noopener noreferrer">${finalLink}</a>`;
                 }
             });
-        }).join('<br/>'); // Join lines with <br/> for new lines
+        }).join('<br/>');
     };
-
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Add the user's input to the chat before sending to the API
+        // Detect if the user is asking about a specific package and store the selection
+        let detectedPackage = null;
+        if (userInput.toLowerCase().includes("basicpackage")) {
+            detectedPackage = data.basicPackage;
+        } else if (userInput.toLowerCase().includes("intermediatepackage")) {
+            detectedPackage = data.intermediatePackage;
+        } else if (userInput.toLowerCase().includes("advancedpackage")) {
+            detectedPackage = data.advancedPackage;
+        }
+        setSelectedPackage(detectedPackage);
+
         setMessages((prevMessages) => [
             ...prevMessages,
             { sender: 'user', text: userInput }
         ]);
 
-        // Combine the table with the user's input (here, we'll just format the data object)
-        const finalInput = `User Input: ${userInput}\n\nPackages:\n${JSON.stringify(data, null, 2)}`;
+        const finalInput = `you are a chatbot of service website, if a customer asks ${userInput} how you will answer only with below data \n\nPackages:\n${JSON.stringify(data, null, 2)}`;
 
         try {
-            // Send request to the API
             const response = await fetch('https://api.aphroheragames.com/chat', {
                 method: 'POST',
                 headers: {
@@ -117,24 +116,21 @@ function CameraSearch() {
             });
 
             const dataResponse = await response.json();
-            console.log('API Response:', dataResponse); // Log the full response to inspect it
-
-            // Assume the response contains 'bot_response' key for the chatbot's reply
             if (dataResponse.response) {
                 setMessages((prevMessages) => [
                     ...prevMessages,
                     { sender: 'bot', text: formatMessageText(dataResponse.response) }
                 ]);
-                
-                // Speak the response only if TTS is enabled
+
                 if (isTTSEnabled) {
-                    speakText(dataResponse.response);
+                    const cleanText = dataResponse.response
+                        .replace(/<[^>]*>/g, '')
+                        .replace(/[^\w\s]/gi, '')
+                        .replace(/(\r\n|\n|\r)/gm, '')
+                        .trim();
+
+                    speakText(cleanText);
                 }
-            } else {
-                setMessages((prevMessages) => [
-                    ...prevMessages,
-                    { sender: 'bot', text: 'No response from chatbot.' }
-                ]);
             }
         } catch (error) {
             console.error('Error:', error);
@@ -144,11 +140,9 @@ function CameraSearch() {
             ]);
         }
 
-        // Clear the user input field after submitting
         setUserInput('');
     };
 
-    // Function to convert text to speech
     const speakText = (text) => {
         if ('speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(text);
@@ -158,71 +152,122 @@ function CameraSearch() {
         }
     };
 
-    // Scroll to the bottom of the chat whenever messages are updated
+    const pauseSpeech = () => {
+        if ('speechSynthesis' in window) {
+            speechSynthesis.cancel(); // Stops any current speech synthesis
+        }
+    };
+
     useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [messages]);
 
+    const handleProfilePicChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            setNewProfilePic(URL.createObjectURL(e.target.files[0]));
+        }
+    };
+
+    const handleSaveProfilePic = () => {
+        if (newProfilePic) {
+            setProfilePic(newProfilePic);
+            setIsModalOpen(false); // Close the modal after updating profile picture
+        }
+    };
+
+    // Function to generate and download a PDF
+    const generatePDF = () => {
+        if (!selectedPackage) return; // Exit if no package is selected
+
+        const doc = new jsPDF();
+
+        // Add title
+        doc.setFontSize(18);
+        doc.text(selectedPackage.name, 10, 10);
+
+        // Add package details
+        doc.setFontSize(12);
+        doc.text(`Cameras: ${selectedPackage.cameras}`, 10, 20);
+        doc.text(`Installation: ${selectedPackage.installation}`, 10, 30);
+        doc.text(`Storage: ${selectedPackage.storage}`, 10, 40);
+        doc.text(`Price Range: ${selectedPackage.priceRange}`, 10, 50);
+
+        // Add camera models
+        selectedPackage.cameraModels.forEach((model, index) => {
+            doc.text(`Model ${index + 1}: ${model.brand} - ${model.model} - ${model.price}`, 10, 60 + (index * 10));
+        });
+
+        // Save the PDF
+        doc.save(`${selectedPackage.name}.pdf`);
+    };
+
     return (
         <div className="fixed bottom-4 right-4 inline-flex items-center justify-center text-sm font-medium z-50">
-            {/* Button to toggle chat visibility */}
             <button
                 className="inline-flex items-center justify-center w-12 h-12 bg-maincolor rounded-full cursor-pointer border-none"
                 type="button"
                 aria-haspopup="dialog"
                 aria-expanded={isChatOpen}
-                onClick={() => setIsChatOpen(!isChatOpen)} // Toggle chat visibility
+                onClick={() => setIsChatOpen(!isChatOpen)}
             >
                 <div className="flex items-center justify-center w-full h-full">
                     <img src={logo} alt="VNS Service Station Logo" className="w-24 h-24 pl-2" />
                 </div>
             </button>
 
-            {/* Conditionally render the chat window based on isChatOpen */}
             {isChatOpen && (
                 <div style={{ boxShadow: '0 0 #0000, 0 0 #0000, 0 1px 2px 0 rgb(0 0 0 / 0.05)' }}
                     className="fixed bottom-[calc(4rem+1.5rem)] right-0 mr-4 bg-white p-6 rounded-lg border border-[#e5e7eb] w-[440px] h-[535px]">
 
-                    {/* Heading */}
                     <div className="flex flex-col space-y-1.5 pb-6">
-                        <h2 className="font-semibold text-lg tracking-tight text-maincolor">VNS Service Station</h2> {/* Chatbot name */}
+                        <h2 className="font-semibold text-lg tracking-tight text-maincolor">VNS Service Station</h2>
                         <p className="text-sm text-[#6b7280] leading-3">Powered by aphroheragames</p>
                     </div>
 
-                    {/* Chat Container */}
                     <div
-    ref={chatContainerRef} // Ref to scroll the chat
-    className="pr-4 h-[310px] overflow-y-auto bg-gray-50 p-4 rounded-lg"
-    style={{ minWidth: '100%' }}>
-    {messages.map((message, index) => (
-        <div
-            key={index}
-            className={`flex gap-3 my-4 text-sm transition-opacity duration-300 ${message.sender === 'user' ? 'justify-end opacity-100' : 'justify-start opacity-100'
-                }`}
-        >
-            <div
-                className={`flex items-center shadow-sm ${message.sender === 'user' ? 'bg-maincolor text-white' : 'bg-gray-200 text-black'
-                    } p-3 rounded-xl max-w-[75%]`}
-            >
-                <span className="block font-semibold mr-2">
-                    {message.sender === 'user' ? 'You' : 'AI'}
-                </span>
-                {message.sender === 'bot' ? (
-                    <span
-                        dangerouslySetInnerHTML={{ __html: message.text }} // Render rich text or HTML
-                    />
-                ) : (
-                    <span>{message.text}</span> // Render plain text for user messages
-                )}
-            </div>
-        </div>
-    ))}
-</div>
+                        ref={chatContainerRef}
+                        className="pr-4 h-[310px] overflow-y-auto bg-gray-50 p-4 rounded-lg"
+                        style={{ minWidth: '100%' }}>
+                        {messages.map((message, index) => (
+                            <div
+                                key={index}
+                                className={`flex items-end gap-3 my-4 text-sm transition-opacity duration-300 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                                {message.sender === 'bot' && (
+                                    <img
+                                        src={logo}
+                                        alt="AI Logo"
+                                        className="w-10 h-10 rounded-full"
+                                    />
+                                )}
 
+                                <div
+                                    className={`flex items-center shadow-sm ${message.sender === 'user' ? 'bg-maincolor text-white' : 'bg-gray-200 text-black'
+                                        } p-3 rounded-xl max-w-[75%]`}
+                                >
+                                    {message.sender === 'bot' ? (
+                                        <span
+                                            dangerouslySetInnerHTML={{ __html: message.text }}
+                                        />
+                                    ) : (
+                                        <span>{message.text}</span>
+                                    )}
+                                </div>
 
-                    {/* Input box */}
+                                {message.sender === 'user' && (
+                                    <img
+                                        src={profilePic}
+                                        alt="User Profile"
+                                        className="w-10 h-10 rounded-full cursor-pointer"
+                                        onClick={() => setIsModalOpen(true)} // Open modal on profile pic click
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
                     <div className="flex items-center pt-2">
                         <form onSubmit={handleSubmit} className="flex items-center justify-center w-full space-x-2">
                             <input
@@ -239,14 +284,67 @@ function CameraSearch() {
                         </form>
                     </div>
 
-                    {/* Button to toggle TTS */}
-                    <div className="pt-4">
+                    <div className="pt-4 flex justify-between">
+                        {/* Pause button */}
                         <button
-                            className={`w-full h-10 text-sm font-medium rounded-lg transition-colors ease-in-out ${isTTSEnabled ? 'bg-maincolor text-white' : 'bg-gray-300 text-gray-900'}`}
+                            className="w-1/2 h-10 text-sm font-medium bg-red-500 text-white rounded-lg transition-colors ease-in-out mr-2 hover:bg-slate-400"
+                            onClick={pauseSpeech}
+                        >
+                            Pause Voice
+                        </button>
+
+                        {/* Enable/Disable Voice button */}
+                        <button
+                            className={`w-1/2 h-10 text-sm font-medium rounded-lg transition-colors ease-in-out ${isTTSEnabled ? 'bg-maincolor text-white' : 'bg-gray-300 text-gray-900'}`}
                             onClick={() => setIsTTSEnabled(!isTTSEnabled)}
                         >
                             {isTTSEnabled ? 'Disable Voice' : 'Enable Voice'}
                         </button>
+                    </div>
+
+                    {selectedPackage && (
+                        <div className="pt-4">
+                            <button
+                                onClick={generatePDF}
+                                className="w-full h-10 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600"
+                            >
+                                Download {selectedPackage.name} PDF
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Profile Picture Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white rounded-lg p-6 space-y-4 w-[400px]">
+                        <h2 className="text-xl font-semibold">Update Profile Picture</h2>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleProfilePicChange}
+                            className="border border-gray-300 p-2 rounded-lg w-full"
+                        />
+                        {newProfilePic && (
+                            <div className="flex justify-center">
+                                <img src={newProfilePic} alt="New Profile" className="w-24 h-24 rounded-full" />
+                            </div>
+                        )}
+                        <div className="flex justify-end space-x-4">
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="bg-gray-300 text-black px-4 py-2 rounded-lg"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSaveProfilePic}
+                                className="bg-maincolor text-white px-4 py-2 rounded-lg"
+                            >
+                                Save
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
