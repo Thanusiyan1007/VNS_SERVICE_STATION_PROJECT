@@ -8,6 +8,7 @@ function Booking_Details() {
     const [serviceTypes, setServiceTypes] = useState({});
     const [packages, setPackages] = useState({});
     const [errorMessage, setErrorMessage] = useState('');
+    const [deleteError, setDeleteError] = useState('');
 
     useEffect(() => {
         // Fetch booking details from the API
@@ -29,10 +30,10 @@ function Booking_Details() {
             }
         };
 
-        // Fetch technician names based on their IDs found in bookings
+        // Fetch technician names
         const fetchTechnicianNames = async (bookings) => {
             const token = localStorage.getItem('accessToken');
-            const technicianIds = [...new Set(bookings.map(booking => booking.technician))]; // Get unique technician IDs
+            const technicianIds = [...new Set(bookings.map(booking => booking.technician))];
             try {
                 const responses = await Promise.all(
                     technicianIds.map(id => axios.get(`http://127.0.0.1:8000/api/v1/auth/users/${id}/`, {
@@ -43,23 +44,22 @@ function Booking_Details() {
                     }))
                 );
                 const technicianData = responses.reduce((acc, response) => {
-                    acc[response.data.id] = response.data.first_name + ' ' + response.data.last_name; // Map technician ID to their name
+                    acc[response.data.id] = response.data.first_name + ' ' + response.data.last_name;
                     return acc;
                 }, {});
-                setTechnicians(technicianData);  // Save the technician names in state
+                setTechnicians(technicianData);
             } catch (error) {
                 console.error('Error fetching technician names:', error);
             }
         };
 
-        // Fetch service type and package names based on their IDs found in bookings
+        // Fetch service types and packages
         const fetchServiceAndPackageNames = async (bookings) => {
             const token = localStorage.getItem('accessToken');
             const serviceTypeIds = [...new Set(bookings.map(booking => booking.service_type))];
             const packageIds = [...new Set(bookings.map(booking => booking.package))];
             
             try {
-                // Fetch Service Types
                 const serviceTypeResponses = await Promise.all(
                     serviceTypeIds.map(id => axios.get(`http://127.0.0.1:8000/api/v1/servicetypes/${id}/`, {
                         headers: {
@@ -69,12 +69,11 @@ function Booking_Details() {
                     }))
                 );
                 const serviceTypeData = serviceTypeResponses.reduce((acc, response) => {
-                    acc[response.data.id] = response.data.name;  // Map service type ID to name
+                    acc[response.data.id] = response.data.name;
                     return acc;
                 }, {});
-                setServiceTypes(serviceTypeData);  // Save service types in state
+                setServiceTypes(serviceTypeData);
 
-                // Fetch Packages
                 const packageResponses = await Promise.all(
                     packageIds.map(id => axios.get(`http://127.0.0.1:8000/api/v1/packages/${id}/`, {
                         headers: {
@@ -84,10 +83,10 @@ function Booking_Details() {
                     }))
                 );
                 const packageData = packageResponses.reduce((acc, response) => {
-                    acc[response.data.id] = response.data.name;  // Map package ID to name
+                    acc[response.data.id] = response.data.name;
                     return acc;
                 }, {});
-                setPackages(packageData);  // Save package names in state
+                setPackages(packageData);
             } catch (error) {
                 console.error('Error fetching service types or packages:', error);
             }
@@ -95,6 +94,26 @@ function Booking_Details() {
 
         fetchBookings();
     }, []);
+
+    // Handle delete action with confirmation
+    const handleDelete = async (bookingId) => {
+        const token = localStorage.getItem('accessToken');
+        const confirmed = window.confirm("Are you sure you want to delete this booking?");
+        if (confirmed) {
+            try {
+                await axios.delete(`http://127.0.0.1:8000/api/v1/bookings/${bookingId}/`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+                setBookings(bookings.filter(booking => booking.id !== bookingId));
+            } catch (error) {
+                console.error('Error deleting booking:', error);
+                setDeleteError('Failed to delete the booking.');
+            }
+        }
+    };
 
     return (
         <div className="overflow-x-auto py-10">
@@ -106,7 +125,12 @@ function Booking_Details() {
                 </div>
             )}
 
-            {/* Booking Details Table */}
+            {deleteError && (
+                <div className="mb-4 p-3 text-red-700 bg-red-100 rounded-lg">
+                    {deleteError}
+                </div>
+            )}
+
             <Table>
                 <Table.Head>
                     <Table.HeadCell>ID</Table.HeadCell>
@@ -119,23 +143,29 @@ function Booking_Details() {
                     <Table.HeadCell>Total Price</Table.HeadCell>
                     <Table.HeadCell>Appointment Date</Table.HeadCell>
                     <Table.HeadCell>Appointment Time</Table.HeadCell>
+                    <Table.HeadCell>Actions</Table.HeadCell> {/* Add an Actions column */}
                 </Table.Head>
                 <Table.Body className="divide-y">
                     {bookings.map(booking => (
                         <Table.Row key={booking.id} className="bg-white dark:border-gray-700 dark:bg-gray-800">
                             <Table.Cell>{booking.id}</Table.Cell>
-                            {/* Use the technician ID to display the technician's name */}
                             <Table.Cell>{technicians[booking.technician] || 'Loading...'}</Table.Cell>
                             <Table.Cell>{booking.name}</Table.Cell>
                             <Table.Cell>{booking.address}</Table.Cell>
                             <Table.Cell>{booking.phone_number}</Table.Cell>
-                            {/* Use service type ID to display service type name */}
                             <Table.Cell>{serviceTypes[booking.service_type] || 'Loading...'}</Table.Cell>
-                            {/* Use package ID to display package name */}
                             <Table.Cell>{packages[booking.package] || 'Loading...'}</Table.Cell>
                             <Table.Cell>{booking.total_price}</Table.Cell>
                             <Table.Cell>{new Date(booking.appointment_date).toLocaleDateString()}</Table.Cell>
                             <Table.Cell>{booking.appointment_time}</Table.Cell>
+                            <Table.Cell>
+                                <button
+                                    className="text-red-500 hover:underline"
+                                    onClick={() => handleDelete(booking.id)}
+                                >
+                                    Delete
+                                </button>
+                            </Table.Cell>
                         </Table.Row>
                     ))}
                 </Table.Body>
