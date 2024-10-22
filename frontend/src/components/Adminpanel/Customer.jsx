@@ -1,14 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Modal, Button, Toast } from "flowbite-react";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; // Import Toastify CSS
-import { HiX } from "react-icons/hi";
+import { Table } from "flowbite-react";
 import axios from 'axios';
 
 function Customer() {
     const [customers, setCustomers] = useState([]);
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [selectedCustomer, setSelectedCustomer] = useState(null);
 
     useEffect(() => {
         const fetchCustomers = async () => {
@@ -20,7 +15,7 @@ function Customer() {
                         'Content-Type': 'application/json'
                     }
                 });
-                const customerData = response.data.filter(user => !user.is_staff); // Filter for non-staff members (customers)
+                const customerData = response.data.filter(user => !user.is_superuser); // Filter to exclude superuser accounts
                 setCustomers(customerData); // Set the customers state with the fetched data
             } catch (error) {
                 console.error('Error fetching customers:', error);
@@ -30,23 +25,13 @@ function Customer() {
         fetchCustomers();
     }, []); // Runs once on component mount
 
-    // Function to handle deleting a customer
-    const handleDeleteCustomer = async () => {
-        const token = localStorage.getItem('accessToken'); // Retrieve the access token
-        try {
-            await axios.delete(`http://127.0.0.1:8000/user/delete/${selectedCustomer.email}/`, {
-                headers: {
-                    Authorization: `Bearer ${token}`, // Include the token in the request header
-                    'Content-Type': 'application/json'
-                }
-            });
-            setCustomers(customers.filter(cust => cust.id !== selectedCustomer.id)); // Remove from local state
-            toast.success('Customer has been deleted.'); // Show success toast
-        } catch (error) {
-            console.error('Error deleting customer:', error);
-            toast.error('Failed to delete customer.'); // Show error toast
-        }
-        setShowDeleteModal(false);
+    // Function to get the status of the user with color styling
+    const getStatus = (is_staff) => {
+        return is_staff ? (
+            <span className="text-green-600 font-bold">Active</span>
+        ) : (
+            <span className="text-red-600 font-bold">Inactive</span>
+        );
     };
 
     return (
@@ -55,61 +40,23 @@ function Customer() {
                 <Table.Head>
                     <Table.HeadCell>Name</Table.HeadCell>
                     <Table.HeadCell>Email</Table.HeadCell>
-                    <Table.HeadCell>Actions</Table.HeadCell>
+                    <Table.HeadCell>Status</Table.HeadCell> {/* Added Status column */}
                 </Table.Head>
                 <Table.Body className="divide-y">
                     {customers.map(customer => (
-                        <Table.Row key={customer.id} className="bg-white dark:border-gray-700 dark:bg-gray-800">
+                        <Table.Row
+                            key={customer.id}
+                            className="bg-white dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition duration-200"
+                        >
                             <Table.Cell className="whitespace-nowrap font-medium text-gray-900 dark:text-white">
                                 {customer.first_name} {customer.last_name}
                             </Table.Cell>
-                            <Table.Cell>{customer.email}</Table.Cell>
-                            <Table.Cell>
-                                <div className="inline-flex justify-center">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedCustomer(customer);
-                                            setShowDeleteModal(true);
-                                        }}
-                                        className="text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400 font-medium"
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            </Table.Cell>
+                            <Table.Cell className="text-gray-700 dark:text-gray-300">{customer.email}</Table.Cell>
+                            <Table.Cell>{getStatus(customer.is_staff)}</Table.Cell> {/* Displaying user status with color */}
                         </Table.Row>
                     ))}
                 </Table.Body>
             </Table>
-
-            {/* Delete Confirmation Modal */}
-            <Modal
-                show={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-            >
-                <Modal.Header>
-                    Delete Customer
-                </Modal.Header>
-                <Modal.Body>
-                    <p>Are you sure you want to delete this customer?</p>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button
-                        color="red"
-                        onClick={handleDeleteCustomer}
-                    >
-                        Delete
-                    </Button>
-                    <Button
-                        onClick={() => setShowDeleteModal(false)}
-                    >
-                        Cancel
-                    </Button>
-                </Modal.Footer>
-            </Modal>
-
-            {/* Toast Notifications */}
-            <ToastContainer position="bottom-right" autoClose={5000} />
         </div>
     );
 }

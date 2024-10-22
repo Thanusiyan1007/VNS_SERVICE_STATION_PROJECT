@@ -13,6 +13,7 @@ class CustomerBooking(models.Model):
     phone_number = models.CharField(max_length=15)
     appointment_date = models.DateField()
     appointment_time = models.TimeField()
+    service = models.CharField(max_length=255, default='')  
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     technician = models.EmailField("Technician Mail", max_length=254, default='none', blank=True)
     customer = models.EmailField("Customer Mail", max_length=254, default='none', blank=True)
