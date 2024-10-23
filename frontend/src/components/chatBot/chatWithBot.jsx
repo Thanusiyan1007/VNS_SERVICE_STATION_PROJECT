@@ -87,60 +87,76 @@ function CameraSearch() {
 
         // Detect if the user is asking about a specific package and store the selection
         let detectedPackage = null;
-        if (userInput.toLowerCase().includes("basicpackage")) {
+        if (userInput.toLowerCase().includes("basic package")) {
             detectedPackage = data.basicPackage;
-        } else if (userInput.toLowerCase().includes("intermediatepackage")) {
+        } else if (userInput.toLowerCase().includes("intermediate package")) {
             detectedPackage = data.intermediatePackage;
-        } else if (userInput.toLowerCase().includes("advancedpackage")) {
+        } else if (userInput.toLowerCase().includes("advanced package")) {
             detectedPackage = data.advancedPackage;
         }
-        setSelectedPackage(detectedPackage);
 
-        setMessages((prevMessages) => [
-            ...prevMessages,
-            { sender: 'user', text: userInput }
-        ]);
-
-        const finalInput = `you are a chatbot of service website, if a customer asks ${userInput} how you will answer only with below data \n\nPackages:\n${JSON.stringify(data, null, 2)}`;
-
-        try {
-            const response = await fetch('https://api.aphroheragames.com/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    api_key: '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',
-                    user_input: finalInput,
-                }),
-            });
-
-            const dataResponse = await response.json();
-            if (dataResponse.response) {
-                setMessages((prevMessages) => [
-                    ...prevMessages,
-                    { sender: 'bot', text: formatMessageText(dataResponse.response) }
-                ]);
-
-                if (isTTSEnabled) {
-                    const cleanText = dataResponse.response
-                        .replace(/<[^>]*>/g, '')
-                        .replace(/[^\w\s]/gi, '')
-                        .replace(/(\r\n|\n|\r)/gm, '')
-                        .trim();
-
-                    speakText(cleanText);
-                }
-            }
-        } catch (error) {
-            console.error('Error:', error);
+        // If a package is detected, display its details in chat
+        if (detectedPackage) {
+            setSelectedPackage(detectedPackage);
             setMessages((prevMessages) => [
                 ...prevMessages,
-                { sender: 'bot', text: 'Error: Unable to get a response from the chatbot.' }
+                { sender: 'user', text: userInput },
+                {
+                    sender: 'bot', text: `Here are the details for the ${detectedPackage.name}: 
+                    \nCameras: ${detectedPackage.cameras}
+                    \nInstallation: ${detectedPackage.installation}
+                    \nStorage: ${detectedPackage.storage}
+                    \nPrice Range: ${detectedPackage.priceRange}`
+                }
             ]);
+        } else {
+            // Handle normal chatbot interaction when no package is detected
+            setMessages((prevMessages) => [
+                ...prevMessages,
+                { sender: 'user', text: userInput }
+            ]);
+
+            const finalInput = `you are a chatbot of service website, if a customer asks ${userInput} how you will answer only with below data \n\nPackages:\n${JSON.stringify(data, null, 2)}`;
+
+            try {
+                const response = await fetch('https://api.aphroheragames.com/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        api_key: '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',
+                        user_input: finalInput,
+                    }),
+                });
+
+                const dataResponse = await response.json();
+                if (dataResponse.response) {
+                    setMessages((prevMessages) => [
+                        ...prevMessages,
+                        { sender: 'bot', text: formatMessageText(dataResponse.response) }
+                    ]);
+
+                    if (isTTSEnabled) {
+                        const cleanText = dataResponse.response
+                            .replace(/<[^>]*>/g, '')
+                            .replace(/[^\w\s]/gi, '')
+                            .replace(/(\r\n|\n|\r)/gm, '')
+                            .trim();
+
+                        speakText(cleanText);
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                setMessages((prevMessages) => [
+                    ...prevMessages,
+                    { sender: 'bot', text: 'Error: Unable to get a response from the chatbot.' }
+                ]);
+            }
         }
 
-        setUserInput('');
+        setUserInput(''); // Clear the user input after handling the message
     };
 
     const speakText = (text) => {
@@ -183,24 +199,64 @@ function CameraSearch() {
 
         const doc = new jsPDF();
 
-        // Add title
-        doc.setFontSize(18);
-        doc.text(selectedPackage.name, 10, 10);
+        // Add custom header
+        const addHeader = (doc) => {
+            // Add background color to header
+            doc.setFillColor(230, 230, 250); // Light lavender background
+            doc.rect(0, 0, 210, 25, 'F'); // Full width header
 
-        // Add package details
-        doc.setFontSize(12);
-        doc.text(`Cameras: ${selectedPackage.cameras}`, 10, 20);
-        doc.text(`Installation: ${selectedPackage.installation}`, 10, 30);
-        doc.text(`Storage: ${selectedPackage.storage}`, 10, 40);
-        doc.text(`Price Range: ${selectedPackage.priceRange}`, 10, 50);
+            // Add title in the header
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(40, 40, 40); // Dark gray text
+            doc.text('CCTV Packages - VNS Service Station', 105, 15, null, null, 'center');
+        };
 
-        // Add camera models
-        selectedPackage.cameraModels.forEach((model, index) => {
-            doc.text(`Model ${index + 1}: ${model.brand} - ${model.model} - ${model.price}`, 10, 60 + (index * 10));
-        });
+        // Add custom footer with background color
+        const addFooter = (doc, pageNum) => {
+            // Add background color to footer
+            doc.setFillColor(230, 230, 250); // Light lavender background
+            doc.rect(0, 280, 210, 20, 'F'); // Full width footer
+
+            // Add page number and contact details
+            doc.setFontSize(10);
+            doc.setTextColor(40, 40, 40); // Dark gray text
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Page ${pageNum}`, 105, 290, null, null, 'center'); // Page number in the center
+            doc.text('Contact: www.vnsservicestation.lk | +94 71 123 4567', 105, 295, null, null, 'center');
+        };
+
+        // Add package content
+        const addContent = (doc) => {
+            // Title
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(40, 40, 40);
+            doc.text(selectedPackage.name, 10, 35);
+
+            // Package Details
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(0, 0, 0); // Black text
+            doc.text(`Cameras: ${selectedPackage.cameras}`, 10, 45);
+            doc.text(`Installation: ${selectedPackage.installation}`, 10, 55);
+            doc.text(`Storage: ${selectedPackage.storage}`, 10, 65);
+            doc.text(`Price Range: ${selectedPackage.priceRange}`, 10, 75);
+
+            // Camera Models
+            selectedPackage.cameraModels.forEach((model, index) => {
+                doc.text(`Model ${index + 1}: ${model.brand} - ${model.model} - ${model.price}`, 10, 85 + (index * 10));
+            });
+        };
+
+        // Generate the PDF with custom header, content, and footer
+        let pageNum = 1;
+        addHeader(doc);
+        addContent(doc);
+        addFooter(doc, pageNum);
 
         // Save the PDF
-        doc.save(`${selectedPackage.name}.pdf`);
+        doc.save(`${selectedPackage.name}_VNS.pdf`);
     };
 
     return (
@@ -236,11 +292,7 @@ function CameraSearch() {
                                 className={`flex items-end gap-3 my-4 text-sm transition-opacity duration-300 ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 {message.sender === 'bot' && (
-                                    <img
-                                        src={logo}
-                                        alt="AI Logo"
-                                        className="w-10 h-10 rounded-full"
-                                    />
+                                    <div className="w-10 h-10 rounded-full bg-gray-300"></div>
                                 )}
 
                                 <div
@@ -284,10 +336,10 @@ function CameraSearch() {
                         </form>
                     </div>
 
-                    <div className="pt-4 flex justify-between">
+                    <div className="pt-4 flex justify-between items-center space-x-2">
                         {/* Pause button */}
                         <button
-                            className="w-1/2 h-10 text-sm font-medium bg-red-500 text-white rounded-lg transition-colors ease-in-out mr-2 hover:bg-slate-400"
+                            className="w-1/3 h-10 text-sm font-medium bg-red-500 text-white rounded-lg transition-colors ease-in-out hover:bg-slate-400"
                             onClick={pauseSpeech}
                         >
                             Pause Voice
@@ -295,23 +347,23 @@ function CameraSearch() {
 
                         {/* Enable/Disable Voice button */}
                         <button
-                            className={`w-1/2 h-10 text-sm font-medium rounded-lg transition-colors ease-in-out ${isTTSEnabled ? 'bg-maincolor text-white' : 'bg-gray-300 text-gray-900'}`}
+                            className={`w-1/3 h-10 text-sm font-medium rounded-lg transition-colors ease-in-out ${isTTSEnabled ? 'bg-maincolor text-white' : 'bg-gray-300 text-gray-900'}`}
                             onClick={() => setIsTTSEnabled(!isTTSEnabled)}
                         >
                             {isTTSEnabled ? 'Disable Voice' : 'Enable Voice'}
                         </button>
-                    </div>
 
-                    {selectedPackage && (
-                        <div className="pt-4">
+                        {/* Download PDF button */}
+                        {selectedPackage && (
                             <button
                                 onClick={generatePDF}
-                                className="w-full h-10 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600"
+                                className="w-1/3 h-10 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600"
                             >
                                 Download {selectedPackage.name} PDF
                             </button>
-                        </div>
-                    )}
+                        )}
+                    </div>
+
                 </div>
             )}
 
