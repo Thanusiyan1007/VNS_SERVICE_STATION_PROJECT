@@ -70,7 +70,6 @@ const TechnicianDashboard = () => {
   };
   
   useEffect(() => {
-    // Function to fetch technician-specific bookings
     const fetchBookingsTech = async () => {
       const token = localStorage.getItem('accessToken');
       try {
@@ -107,8 +106,6 @@ const TechnicianDashboard = () => {
   }, []);  // The empty dependency array ensures this runs only once on component mount
   
 
-
-  // Handle booking status change (accept/reject)
   const handleStatusChange = async (id, status) => {
     try {
       const token = localStorage.getItem('accessToken');
@@ -146,7 +143,6 @@ const TechnicianDashboard = () => {
     }
   };
 
-  // Handle the form to fill customer needs
   const handleFillCustomerNeeds = (booking) => {
     // Check if the booking is already filled
     if (filledBookings.includes(booking.id)) {
@@ -154,14 +150,18 @@ const TechnicianDashboard = () => {
       return;
     }
 
+    // Pre-fill the form with booking details, including the service type from the booking
     setSelectedBooking(booking);
+    const serviceType = serviceTypes.find(service => service.name === booking.service);
+    const serviceTypeId = serviceType ? serviceType.id : '';
+
     setFormData({
       name: booking.name,
       address: booking.address,
       phone: booking.phone_number,
-      serviceType: '',
-      packageType: '',
-      totalPrice: 0, // Reset total price
+      serviceType: serviceTypeId, // Pre-populate the service type based on the booking's service
+      packageType: booking.package_type || '', // Pre-populate the package type if available
+      totalPrice: booking.total_price || 0,    // Pre-populate total price if available
     });
     setIsModalOpen(true);
   };
@@ -267,9 +267,7 @@ const TechnicianDashboard = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4 pb-12">
           {bookings.map((booking) => {
-            // If the booking has been accepted by another technician, skip it
             if (booking.status === 'accepted' && booking.technician !== technicianEmail) return null;
-            // If the booking has been rejected by this technician, skip it
             if (booking.status === 'rejected' && booking.rejected_technicians.includes(technicianEmail)) return null;
 
             return (
@@ -313,19 +311,18 @@ const TechnicianDashboard = () => {
 
                 {/* Show Fill Customer Needs button only if the appointment date is today, it hasn't been filled, and it isn't in bookings_tech */}
                 {booking.status === 'accepted' && 
-    booking.technician === technicianEmail && 
-    isToday(booking.appointment_date) && 
-    !filledBookings.includes(booking.id) && 
-    !bookings_tech.some(b => b.id === booking.id) && (
-    <div className="mt-6">
-        <button
-            onClick={() => handleFillCustomerNeeds(booking)}
-            className="bg-blue-500 text-white py-2 px-4 rounded-md w-full hover:bg-blue-600 transition-colors duration-200">
-            Fill Customer Needs
-        </button>
-    </div>
-)}
-
+                  booking.technician === technicianEmail && 
+                  isToday(booking.appointment_date) && 
+                  !filledBookings.includes(booking.id) && 
+                  !bookings_tech.some(b => b.id === booking.id) && (
+                  <div className="mt-6">
+                    <button
+                      onClick={() => handleFillCustomerNeeds(booking)}
+                      className="bg-blue-500 text-white py-2 px-4 rounded-md w-full hover:bg-blue-600 transition-colors duration-200">
+                      Fill Customer Needs
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -394,7 +391,9 @@ const TechnicianDashboard = () => {
                   required
                   disabled={isSubmitting} // Disable input when form is submitting
                 >
-                  <option value="">Select a Service</option>
+                  {formData.serviceType === '' && (
+                    <option value="">Select a Service</option>  // Show this only if no service is pre-filled
+                  )}
                   {serviceTypes.map(service => (
                     <option key={service.id} value={service.id}>{service.name}</option>
                   ))}
