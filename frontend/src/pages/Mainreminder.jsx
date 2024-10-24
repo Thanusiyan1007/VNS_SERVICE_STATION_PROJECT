@@ -57,32 +57,37 @@ function Mainreminder() {
                 <p className="text-gray-500">No upcoming appointments found.</p>
             )}
 
-            {bookings.map((booking) => {
-                const today = moment().startOf('day'); // Get the current date (start of the day for accuracy)
-                const appointmentDate = moment(booking.appointment_date).startOf('day'); // Convert appointment_date to a moment object and start of day
-                const daysLeft = appointmentDate.diff(today, 'days'); // Calculate the difference in days
+            {bookings
+                .filter((booking) => {
+                    const today = moment().startOf('day'); // Get the current date (start of the day for accuracy)
+                    const appointmentDate = moment(booking.appointment_date).startOf('day'); // Convert appointment_date to a moment object and start of day
+                    return appointmentDate.isAfter(today); // Filter to only include future appointments
+                })
+                .map((booking) => {
+                    const today = moment().startOf('day'); // Get the current date (start of the day for accuracy)
+                    const appointmentDate = moment(booking.appointment_date).startOf('day'); // Convert appointment_date to a moment object and start of day
+                    const daysLeft = appointmentDate.diff(today, 'days'); // Calculate the difference in days
 
-                return (
-                    <Alert 
-                        key={booking.id} 
-                        color="warning" 
-                        icon={HiInformationCircle} 
-                        className='bg-maincolor text-white flex p-6 mb-8'
-                    >
-                        <div className='flex items-center h-[250px] text-lg'>
-                            <img src={girl1} alt="Reminder Icon" className='w-20 h-20 mr-4' />
-                            <div>
-                                <span className="font-medium">Reminder alert!<br /></span>
-                                You have an appointment on {moment(booking.appointment_date).format('MMMM Do, YYYY')}.<br />
-                                <span>
-                                    <strong>{daysLeft} days</strong> left until your appointment.
-                                    
-                                </span>
+                    return (
+                        <Alert 
+                            key={booking.id} 
+                            color="warning" 
+                            icon={HiInformationCircle} 
+                            className='bg-maincolor text-white flex p-6 mb-8'
+                        >
+                            <div className='flex items-center h-[250px] text-lg'>
+                                <img src={girl1} alt="Reminder Icon" className='w-20 h-20 mr-4' />
+                                <div>
+                                    <span className="font-medium">Reminder alert!<br /></span>
+                                    You have an appointment on {moment(booking.appointment_date).format('MMMM Do, YYYY')}.<br />
+                                    <span>
+                                        <strong>{daysLeft} days</strong> left until your appointment.
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    </Alert>
-                );
-            })}
+                        </Alert>
+                    );
+                })}
 
             {/* Add Your Plan Button */}
             <div className="flex justify-end mt-8">

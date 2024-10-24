@@ -73,38 +73,44 @@ function Reminder() {
                 <p className="text-gray-500" data-aos="fade-up">No upcoming appointments found.</p>
             )}
 
-            {bookings.map((booking) => {
-                const today = moment().startOf('day'); // Get the current date (start of the day for accuracy)
-                const appointmentDate = moment(booking.appointment_date).startOf('day'); // Convert appointment_date to a moment object and start of day
-                const daysLeft = appointmentDate.diff(today, 'days'); // Calculate the difference in days
+            {bookings
+                .filter((booking) => {
+                    const today = moment().startOf('day'); // Get the current date (start of the day for accuracy)
+                    const appointmentDate = moment(booking.appointment_date).startOf('day'); // Convert appointment_date to a moment object and start of day
+                    return appointmentDate.isAfter(today); // Filter to only include bookings with appointment dates after today
+                })
+                .map((booking) => {
+                    const today = moment().startOf('day'); // Get the current date (start of the day for accuracy)
+                    const appointmentDate = moment(booking.appointment_date).startOf('day'); // Convert appointment_date to a moment object and start of day
+                    const daysLeft = appointmentDate.diff(today, 'days'); // Calculate the difference in days
 
-                return (
-                    <motion.div
-                        key={booking.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: 0.5, ease: 'easeInOut' }} // Framer-motion for smooth alert animation
-                        data-aos="fade-up" // AOS for scroll-triggered effect
-                    >
-                        <Alert 
-                            color="warning" 
-                            icon={HiInformationCircle} 
-                            className='bg-maincolor text-white flex p-6 mb-8'
+                    return (
+                        <motion.div
+                            key={booking.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, ease: 'easeInOut' }} // Framer-motion for smooth alert animation
+                            data-aos="fade-up" // AOS for scroll-triggered effect
                         >
-                            <div className='flex items-center h-[250px] text-lg'>
-                                <img src={girl1} alt="Reminder Icon" className='w-20 h-20 mr-4' />
-                                <div>
-                                    <span className="font-medium">Reminder alert!<br /></span>
-                                    You have an appointment on {moment(booking.appointment_date).format('MMMM Do, YYYY')}.<br />
-                                    <span>
-                                        <strong>{daysLeft} days</strong> left until your appointment.
-                                    </span>
+                            <Alert 
+                                color="warning" 
+                                icon={HiInformationCircle} 
+                                className='bg-maincolor text-white flex p-6 mb-8'
+                            >
+                                <div className='flex items-center h-[250px] text-lg'>
+                                    <img src={girl1} alt="Reminder Icon" className='w-20 h-20 mr-4' />
+                                    <div>
+                                        <span className="font-medium">Reminder alert!<br /></span>
+                                        You have an appointment on {moment(booking.appointment_date).format('MMMM Do, YYYY')}.<br />
+                                        <span>
+                                            <strong>{daysLeft} days</strong> left until your appointment.
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                        </Alert>
-                    </motion.div>
-                );
-            })}
+                            </Alert>
+                        </motion.div>
+                    );
+                })}
 
             {/* Add Your Plan Button */}
             <motion.div
