@@ -201,10 +201,10 @@ DJOSER = {
 
 EMAIL_BACKEND = "users.custom_email_backend.CustomEmailBackend"
 EMAIL_HOST = env("EMAIL_HOST")
-EMAIL_USE_TLS = True
+EMAIL_USE_TLS = True  # Gmail requires TLS
 EMAIL_PORT = env("EMAIL_PORT")
 EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
-DEFAULT_FROM_EMAIL = "rayapputhanusiyan25062000@gmail.com"
+DEFAULT_FROM_EMAIL = "rayapputhansiyan25062000@gmail.com"  # Use your Gmail address here
 DOMAIN = env("DOMAIN")
 SITE_NAME = "VNS_Sevice_Station"
