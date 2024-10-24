@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { FaCalendarAlt, FaPhone, FaMapMarkerAlt, FaUserCircle } from 'react-icons/fa';
 import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css'; // Import Toastify CSS
-import heroImage from '../../../Assets/a-group-of-diverse-employees-working-together-in-a.png'; // Add your own image path here
+import 'react-toastify/dist/ReactToastify.css';
+import heroImage from '../../../Assets/a-group-of-diverse-employees-working-together-in-a.png';
 
 const TechnicianDashboard = () => {
   const [bookings, setBookings] = useState([]);
@@ -22,29 +22,18 @@ const TechnicianDashboard = () => {
     packageType: '',
     totalPrice: 0,
   });
-  const [isSubmitting, setIsSubmitting] = useState(false); // To track form submission status
-  const [filledBookings, setFilledBookings] = useState([]); // To track filled bookings
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filledBookings, setFilledBookings] = useState([]);
 
-  // Fetch Service Types, Packages, and Bookings from the backend
   const fetchServiceTypesAndPackages = async () => {
     try {
       const token = localStorage.getItem('accessToken');
-      
-      // Fetch Service Types
       const serviceTypesResponse = await axios.get('http://127.0.0.1:8000/api/v1/servicetypes/', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      
-      // Fetch Packages
       const packagesResponse = await axios.get('http://127.0.0.1:8000/api/v1/packages/', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-      
-      // Update state with service types and packages
       setServiceTypes(serviceTypesResponse.data);
       setPackages(packagesResponse.data);
     } catch (err) {
@@ -57,86 +46,65 @@ const TechnicianDashboard = () => {
     try {
       const token = localStorage.getItem('accessToken');
       const response = await axios.get('http://127.0.0.1:8000/api/v1/customerbooking/', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       setBookings(response.data);
-      setBookings_tech(response.data);  // Set technician's specific bookings
+      setBookings_tech(response.data);
     } catch (err) {
       setError('Failed to fetch booking details. Please try again.');
       console.error(err);
     }
   };
-  
+
   useEffect(() => {
     const fetchBookingsTech = async () => {
       const token = localStorage.getItem('accessToken');
       try {
         const response = await axios.get('http://127.0.0.1:8000/api/v1/bookings/', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
-        setBookings_tech(response.data);  // Set technician's specific bookings
-        console.log('Fetched bookings:', response.data); // Confirm it fetched correctly
+        setBookings_tech(response.data);
       } catch (error) {
         console.error('Error fetching technician bookings:', error);
         setError('Failed to fetch booking details.');
       }
     };
-  
+
     const storedEmail = localStorage.getItem('email');
+    
+    // Retrieve filled bookings from localStorage
     const storedFilledBookings = JSON.parse(localStorage.getItem('filledBookings')) || [];
-  
+
     if (storedEmail) {
       setTechnicianEmail(storedEmail);
     }
-  
+
     setFilledBookings(storedFilledBookings);
-  
-    // Call all necessary fetch functions once when the component mounts
+
     fetchBookings();
     fetchBookingsTech();
     fetchServiceTypesAndPackages();
-  
-    // Ensure the state is saved to localStorage after bookings are marked filled
-    localStorage.setItem('filledBookings', JSON.stringify(filledBookings));
-  }, []);  // The empty dependency array ensures this runs only once on component mount
-  
+  }, []);
 
   const handleStatusChange = async (id, status) => {
     try {
       const token = localStorage.getItem('accessToken');
-      
-      // Update booking status
       await axios.patch(
         `http://127.0.0.1:8000/api/v1/customerbooking/${id}/update_status/`,
-        { status },  // Set status (accepted/rejected)
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { status },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // If status is accepted, update the technician as well
       if (status === 'accepted') {
         await axios.patch(
           `http://127.0.0.1:8000/api/v1/customerbooking/${id}/update_technician/`,
-          { technician: technicianEmail },  // Assign technician
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+          { technician: technicianEmail },
+          { headers: { Authorization: `Bearer ${token}` } }
         );
       }
 
       toast.success(`Booking ${status} successfully!`);
-      fetchBookings();  // Refresh bookings
-
+      fetchBookings();
     } catch (error) {
       console.error('Error updating booking status:', error);
       toast.error('Failed to update booking status. Please try again.');
@@ -144,65 +112,67 @@ const TechnicianDashboard = () => {
   };
 
   const handleFillCustomerNeeds = (booking) => {
-    // Check if the booking is already filled
     if (filledBookings.includes(booking.id)) {
       toast.error('This booking has already been filled.');
       return;
     }
 
-    // Pre-fill the form with booking details, including the service type from the booking
+    if (serviceTypes.length === 0) {
+      toast.error('Service types are not available yet. Please try again later.');
+      return;
+    }
+
     setSelectedBooking(booking);
-    const serviceType = serviceTypes.find(service => service.name === booking.service);
+    const serviceType = serviceTypes.find(service => service.name.toLowerCase() === booking.service.toLowerCase());
     const serviceTypeId = serviceType ? serviceType.id : '';
 
     setFormData({
       name: booking.name,
       address: booking.address,
       phone: booking.phone_number,
-      serviceType: serviceTypeId, // Pre-populate the service type based on the booking's service
-      packageType: booking.package_type || '', // Pre-populate the package type if available
-      totalPrice: booking.total_price || 0,    // Pre-populate total price if available
+      serviceType: serviceTypeId,
+      packageType: booking.package_type || '',
+      totalPrice: booking.total_price || 0,
     });
     setIsModalOpen(true);
   };
 
   const handleFormSubmit = async (e) => {
-    e.preventDefault(); // Prevent page reload on form submission
-    setIsSubmitting(true); // Set form as submitting to disable further submission
-
-    const token = localStorage.getItem('accessToken'); // Get JWT token from localStorage
+    e.preventDefault();
+    setIsSubmitting(true);
+    const token = localStorage.getItem('accessToken');
 
     try {
       await axios.post(
-        'http://127.0.0.1:8000/api/v1/bookings/',  // Assuming you're posting to the Booking API
+        'http://127.0.0.1:8000/api/v1/bookings/',
         {
           name: formData.name,
           address: formData.address,
           phone_number: formData.phone,
-          service_type: formData.serviceType,  // Pass the selected service type
-          package: formData.packageType,       // Pass the selected package type
-          total_price: formData.totalPrice,    // Pass the calculated total price
+          service_type: formData.serviceType,
+          package: formData.packageType,
+          total_price: formData.totalPrice,
           appointment_date: selectedBooking.appointment_date,
           appointment_time: selectedBooking.appointment_time,
-          technician: technicianEmail,         // Pass the logged-in technician's email
+          technician: technicianEmail,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,  // Send token in the Authorization header
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      
-      // Success: Show toast notification and close the modal
+
       toast.success('Booking successfully submitted!');
-      setFilledBookings([...filledBookings, selectedBooking.id]); // Mark the booking as filled
-      setIsModalOpen(false);  // Close the modal after submission
-      fetchBookings();  // Refresh bookings after successful submission
+      const updatedFilledBookings = [...filledBookings, selectedBooking.id];
+      setFilledBookings(updatedFilledBookings);
+      
+      // Save filled bookings to localStorage
+      localStorage.setItem('filledBookings', JSON.stringify(updatedFilledBookings));
+
+      setIsModalOpen(false);
+      fetchBookings();
     } catch (err) {
       console.error('Error submitting booking form:', err);
-      toast.error('Failed to submit the booking. Please try again.'); // Show error toast
+      toast.error('Failed to submit the booking. Please try again.');
     } finally {
-      setIsSubmitting(false); // Re-enable the form after submission attempt
+      setIsSubmitting(false);
     }
   };
 
@@ -213,13 +183,12 @@ const TechnicianDashboard = () => {
       [name]: value,
     }));
 
-    // Update total price when serviceType or packageType changes
     if (name === 'packageType') {
       const selectedPackage = packages.find(pkg => pkg.id === parseInt(value));
       if (selectedPackage) {
         setFormData((prevData) => ({
           ...prevData,
-          totalPrice: selectedPackage.average_price, // Set total price based on selected package
+          totalPrice: selectedPackage.average_price,
         }));
       }
     }
@@ -237,20 +206,13 @@ const TechnicianDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Toast notification container */}
       <ToastContainer />
-
-      {/* Hero Section with Image */}
       <div className="relative w-full h-96">
         <img src={heroImage} alt="Hero" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center text-center px-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-white">
-            Welcome to the VNS Staff Portal
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-white">Welcome to the VNS Staff Portal</h1>
         </div>
       </div>
-
-      {/* Introduction Section */}
       <div className="text-center my-12 px-4 sm:px-6 md:px-8 lg:px-10 py-4">
         <h2 className="text-3xl font-bold text-maincolor mb-4">Manage Your Appointments Efficiently</h2>
         <p className="text-lg text-gray-700 max-w-2xl mx-auto">
@@ -261,7 +223,6 @@ const TechnicianDashboard = () => {
 
       {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
-      {/* Booking Cards Section */}
       {bookings.length === 0 && !error ? (
         <p className="text-center text-gray-700">No bookings available</p>
       ) : (
@@ -269,6 +230,8 @@ const TechnicianDashboard = () => {
           {bookings.map((booking) => {
             if (booking.status === 'accepted' && booking.technician !== technicianEmail) return null;
             if (booking.status === 'rejected' && booking.rejected_technicians.includes(technicianEmail)) return null;
+
+            const isFilled = filledBookings.includes(booking.id);
 
             return (
               <div key={booking.id} className="bg-white p-6 shadow-lg rounded-lg transform transition-all hover:scale-105 hover:shadow-2xl">
@@ -293,7 +256,6 @@ const TechnicianDashboard = () => {
                   </p>
                 </div>
 
-                {/* Accept and Reject buttons for pending bookings */}
                 {booking.status === 'pending' && (
                   <div className="mt-6 flex justify-between">
                     <button
@@ -309,18 +271,19 @@ const TechnicianDashboard = () => {
                   </div>
                 )}
 
-                {/* Show Fill Customer Needs button only if the appointment date is today, it hasn't been filled, and it isn't in bookings_tech */}
-                {booking.status === 'accepted' && 
-                  booking.technician === technicianEmail && 
-                  isToday(booking.appointment_date) && 
-                  !filledBookings.includes(booking.id) && 
-                  !bookings_tech.some(b => b.id === booking.id) && (
+                {booking.status === 'accepted' &&
+                  booking.technician === technicianEmail &&
+                  isToday(booking.appointment_date) && (
                   <div className="mt-6">
-                    <button
-                      onClick={() => handleFillCustomerNeeds(booking)}
-                      className="bg-blue-500 text-white py-2 px-4 rounded-md w-full hover:bg-blue-600 transition-colors duration-200">
-                      Fill Customer Needs
-                    </button>
+                    {isFilled ? (
+                      <p className="text-gray-500 font-semibold">Already Filled</p>
+                    ) : (
+                      <button
+                        onClick={() => handleFillCustomerNeeds(booking)}
+                        className="bg-blue-500 text-white py-2 px-4 rounded-md w-full hover:bg-blue-600 transition-colors duration-200">
+                        Fill Customer Needs
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -329,7 +292,6 @@ const TechnicianDashboard = () => {
         </div>
       )}
 
-      {/* About Us Section */}
       <div className="bg-maincolor py-12 text-center text-white">
         <h2 className="text-4xl font-bold mb-6">About VNS Service Station</h2>
         <p className="text-lg max-w-4xl mx-auto">
@@ -339,7 +301,6 @@ const TechnicianDashboard = () => {
         </p>
       </div>
 
-      {/* Modal Popup for Filling Customer Needs */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-lg max-w-lg w-full">
@@ -354,7 +315,7 @@ const TechnicianDashboard = () => {
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border rounded-lg"
                   required
-                  disabled={isSubmitting} // Disable input when form is submitting
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="mb-4">
@@ -366,7 +327,7 @@ const TechnicianDashboard = () => {
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border rounded-lg"
                   required
-                  disabled={isSubmitting} // Disable input when form is submitting
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="mb-4">
@@ -378,7 +339,7 @@ const TechnicianDashboard = () => {
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border rounded-lg"
                   required
-                  disabled={isSubmitting} // Disable input when form is submitting
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="mb-4">
@@ -389,11 +350,9 @@ const TechnicianDashboard = () => {
                   onChange={handleInputChange}
                   className="w-full px-4 py-2 border rounded-lg"
                   required
-                  disabled={isSubmitting} // Disable input when form is submitting
+                  disabled={isSubmitting}
                 >
-                  {formData.serviceType === '' && (
-                    <option value="">Select a Service</option>  // Show this only if no service is pre-filled
-                  )}
+                  {formData.serviceType === '' && <option value="">Select a Service</option>}
                   {serviceTypes.map(service => (
                     <option key={service.id} value={service.id}>{service.name}</option>
                   ))}
@@ -408,7 +367,7 @@ const TechnicianDashboard = () => {
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border rounded-lg"
                     required
-                    disabled={isSubmitting} // Disable input when form is submitting
+                    disabled={isSubmitting}
                   >
                     <option value="">Select a Package</option>
                     {packages.filter(pkg => pkg.service_type === parseInt(formData.serviceType)).map(pkg => (
@@ -417,7 +376,6 @@ const TechnicianDashboard = () => {
                   </select>
                 </div>
               )}
-              {/* Display Total Price */}
               {formData.packageType && formData.serviceType && (
                 <div className="mb-4">
                   <label className="block mb-2 font-semibold">Total Price</label>
@@ -429,14 +387,14 @@ const TechnicianDashboard = () => {
                   type="button"
                   onClick={closeModal}
                   className="bg-gray-500 text-white py-2 px-4 rounded-md mr-4"
-                  disabled={isSubmitting} // Disable button when form is submitting
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="bg-blue-500 text-white py-2 px-4 rounded-md"
-                  disabled={isSubmitting} // Disable submit button when form is submitting
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit'}
                 </button>

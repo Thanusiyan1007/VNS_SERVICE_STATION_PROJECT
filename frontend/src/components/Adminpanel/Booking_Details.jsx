@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table } from 'flowbite-react';
+import { Table, Modal, Button } from 'flowbite-react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import axios from 'axios';
 
 function Booking_Details() {
@@ -9,9 +11,10 @@ function Booking_Details() {
     const [packages, setPackages] = useState({});
     const [errorMessage, setErrorMessage] = useState('');
     const [deleteError, setDeleteError] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedBookingId, setSelectedBookingId] = useState(null);
 
     useEffect(() => {
-        // Fetch booking details from the API
         const fetchBookings = async () => {
             const token = localStorage.getItem('accessToken');
             try {
@@ -30,7 +33,6 @@ function Booking_Details() {
             }
         };
 
-        // Fetch technician names
         const fetchTechnicianNames = async (bookings) => {
             const token = localStorage.getItem('accessToken');
             const technicianIds = [...new Set(bookings.map(booking => booking.technician))];
@@ -53,12 +55,11 @@ function Booking_Details() {
             }
         };
 
-        // Fetch service types and packages
         const fetchServiceAndPackageNames = async (bookings) => {
             const token = localStorage.getItem('accessToken');
             const serviceTypeIds = [...new Set(bookings.map(booking => booking.service_type))];
             const packageIds = [...new Set(bookings.map(booking => booking.package))];
-            
+
             try {
                 const serviceTypeResponses = await Promise.all(
                     serviceTypeIds.map(id => axios.get(`http://127.0.0.1:8000/api/v1/servicetypes/${id}/`, {
@@ -95,24 +96,32 @@ function Booking_Details() {
         fetchBookings();
     }, []);
 
-    // Handle delete action with confirmation
-    const handleDelete = async (bookingId) => {
+    const handleDelete = async () => {
         const token = localStorage.getItem('accessToken');
-        const confirmed = window.confirm("Are you sure you want to delete this booking?");
-        if (confirmed) {
-            try {
-                await axios.delete(`http://127.0.0.1:8000/api/v1/bookings/${bookingId}/`, {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                    },
-                });
-                setBookings(bookings.filter(booking => booking.id !== bookingId));
-            } catch (error) {
-                console.error('Error deleting booking:', error);
-                setDeleteError('Failed to delete the booking.');
-            }
+        try {
+            await axios.delete(`http://127.0.0.1:8000/api/v1/bookings/${selectedBookingId}/`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            setBookings(bookings.filter(booking => booking.id !== selectedBookingId));
+            setShowDeleteModal(false); // Close the modal after deletion
+            toast.success('Booking has been deleted.'); // Show success toast
+        } catch (error) {
+            console.error('Error deleting booking:', error);
+            setDeleteError('Failed to delete the booking.');
+            toast.error('Failed to delete booking.');
         }
+    };
+
+    const openDeleteModal = (bookingId) => {
+        setSelectedBookingId(bookingId);
+        setShowDeleteModal(true);
+    };
+
+    const closeDeleteModal = () => {
+        setShowDeleteModal(false);
     };
 
     return (
@@ -143,7 +152,7 @@ function Booking_Details() {
                     <Table.HeadCell>Total Price</Table.HeadCell>
                     <Table.HeadCell>Appointment Date</Table.HeadCell>
                     <Table.HeadCell>Appointment Time</Table.HeadCell>
-                    <Table.HeadCell>Actions</Table.HeadCell> {/* Add an Actions column */}
+                    <Table.HeadCell>Actions</Table.HeadCell>
                 </Table.Head>
                 <Table.Body className="divide-y">
                     {bookings.map(booking => (
@@ -161,7 +170,7 @@ function Booking_Details() {
                             <Table.Cell>
                                 <button
                                     className="text-red-500 hover:underline"
-                                    onClick={() => handleDelete(booking.id)}
+                                    onClick={() => openDeleteModal(booking.id)}
                                 >
                                     Delete
                                 </button>
@@ -170,6 +179,35 @@ function Booking_Details() {
                     ))}
                 </Table.Body>
             </Table>
+
+            {/* Delete Confirmation Modal */}
+            <Modal
+                show={showDeleteModal}
+                onClose={closeDeleteModal}
+            >
+                <Modal.Header>
+                    Delete Booking
+                </Modal.Header>
+                <Modal.Body>
+                    <p>Are you sure you want to delete this booking?</p>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button
+                        color="red"
+                        onClick={handleDelete}
+                    >
+                        Delete
+                    </Button>
+                    <Button
+                        onClick={closeDeleteModal}
+                    >
+                        Cancel
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            {/* Toast Notifications */}
+            <ToastContainer position="bottom-right" autoClose={5000} />
         </div>
     );
 }

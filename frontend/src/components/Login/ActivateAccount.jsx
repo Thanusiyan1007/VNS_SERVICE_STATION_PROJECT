@@ -14,18 +14,23 @@ const ActivateAccount = () => {
   useEffect(() => {
     const activateAccount = async () => {
       try {
+        console.log('Attempting account activation with UID:', uid, 'Token:', token); // Log UID and token
+        
         // Make a POST request to the backend to activate the account
         const response = await axios.post('http://127.0.0.1:8000/api/v1/auth/users/activation/', {
           uid,
           token
         });
-        
+
+        console.log('Activation response:', response.data); // Log the response data
+
         setStatus('success');
         toast.success('Your account has been activated! Redirecting to login...');
         
         // Optionally, navigate to a different page after activation
         setTimeout(() => navigate('/login'), 3000);
       } catch (error) {
+        console.error('Activation error:', error.response ? error.response.data : error.message); // Improved error logging
         setStatus('error');
         toast.error('Account activation failed! Please try again.');
       }
